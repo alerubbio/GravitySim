@@ -5,7 +5,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Window and General Seetings
-WIDTH, HEIGHT = 1080, 720
+WIDTH, HEIGHT = 1280, 720
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Gravity Sim :]")
 BLACK = 0, 0, 0
@@ -15,14 +15,14 @@ EDGE_PADDING = 100
 
 # Planet and Physics Properties
 # Currently defaults to Earth and Moon
-GRAV_CNST = 4e-7
-BIG_MASS = 7.35e22 * 81
-SMALL_MASS = 7.35e15
-RADIUS_PADDING = 385e6
+GRAV_CNST = 7e-7
+BIG_MASS = 7.35e22 * 70
+SMALL_MASS = 7.35e20
+RADIUS_PADDING = 600e6
 FPS = 120
-TIME_PASSED = .5
+TIME_PASSED = .8
 SMOOTHING_OPERATOR = .15
-GALAXY_SIZE = 5
+GALAXY_SIZE = 50
 
 planet_list = []
 
@@ -31,7 +31,7 @@ BIG_PLANET = pygame.transform.scale(
             pygame.image.load('Assets\Ice.png'), 
             (BIG_PLANET_WIDTH, BIG_PLANET_HEIGHT))
 
-SMALL_PLANET_WIDTH, SMALL_PLANET_HEIGHT = 10, 10
+SMALL_PLANET_WIDTH, SMALL_PLANET_HEIGHT = 12, 12
 SMALL_PLANET = pygame.transform.scale(
             pygame.image.load('Assets\Baren.png'), 
             (SMALL_PLANET_WIDTH, SMALL_PLANET_HEIGHT))
@@ -42,8 +42,8 @@ def rand_pos():
             random.randint(EDGE_PADDING, HEIGHT - EDGE_PADDING))
 
 def rand_velocity():
-    return (float(random.randint(0, 300)/100.)-1.,
-               float(random.randint(0, 300)/100.)-1.)
+    return (float(random.randint(0, 30)/10.)-1.,
+               float(random.randint(0, 30)/10.)-1.)
 
 # Controls position, velocity and acceleration of planets
 class State:
@@ -67,8 +67,8 @@ class Planet:
         self.state = State(x, y, vel_x, vel_y)
         if num == 0: 
             self.mass = BIG_MASS
-            self.state.pos_x = 540
-            self.state.pos_y = 360
+            self.state.pos_x = WIDTH/2
+            self.state.pos_y = HEIGHT/2
             self.state.vel_x = 0
             self.state.vel_y = 0
             self.radius = BIG_PLANET_WIDTH/2
@@ -77,8 +77,6 @@ class Planet:
             self.mass = SMALL_MASS
             self.radius = SMALL_PLANET_WIDTH/2
         
-        WIN.blit(SMALL_PLANET, (self.state.pos_x, self.state.pos_y))
-    
 
 
 # Update vector properties of planets
@@ -123,15 +121,17 @@ def populate_galaxy(planet):
     return planet
 
 def planets_collide(planet1, planet2):
-    distx = planet1.state.pos_x - planet1.state.pos_x
-    disty = planet1.state.pos_y - planet1.state.pos_y
+    distx = planet1.state.pos_x - planet2.state.pos_x
+    disty = planet1.state.pos_y - planet2.state.pos_y
 
     dist_sq = distx**2 + disty**2
 
-    return math.sqrt(dist_sq) <= (planet1.radius + planet2.radius)
+    return math.sqrt(dist_sq)  <= (planet1.radius + planet2.radius) * .9
 
 def combine_collisions():
     for planet1 in planet_list:
+        if planet1.state.has_collided:
+            continue
         for planet2 in planet_list:
             if planet1 is planet2 or planet2.state.has_collided:
                 continue
@@ -147,48 +147,49 @@ def combine_collisions():
                 vel_y = ((planet1.state.vel_y * planet1.mass + planet2.state.vel_y * planet2.mass)
                         /planet1.mass + planet2.mass)
 
-                planet_list.remove(planet2)
                 planet1.mass += planet2.mass
-                planet1.state.vel_x = vel_x
-                planet1.state.vel_y = vel_y
-
         
 def update_window(big_flag, big):
     WIN.fill(BLACK)
     if big_flag == True:
-        WIN.blit(BIG_PLANET, (big.state.pos_x, big.state.pos_y))
+      WIN.blit(BIG_PLANET, (big.state.pos_x, big.state.pos_y))
 
     for planet in planet_list:
+        if planet is big or planet.state.has_collided:
+            continue
         WIN.blit(SMALL_PLANET, (planet.state.pos_x, planet.state.pos_y))
+
+
+def create_big_mass(big_flag):
+    if big_flag is True:
+        big = Planet(0)
+        populate_galaxy(big)
 
 def main():
     run = True
 
-    big = Planet(0)
-    small = Planet(1)
-
     # create a large center mass
-    populate_galaxy(big)
     big_flag = True
+    create_big_mass(big_flag)
 
     # populates system with lots of small bodies
     for i in range(0, GALAXY_SIZE):
-        planet_list.append(populate_galaxy(small))
+        small = Planet(1)
+        populate_galaxy(small)
 
     while run:
         clock.tick(FPS)
         for event in pygame.event.get(): 
             if event.type == pygame.QUIT: 
                 run = False
-                for planet in planet_list:
-                    print(planet.mass)
 
-        update_window(big_flag, big)
-        pygame.display.update()
-        
+
+        update_window(big_flag, planet_list[0])
         updateAcceleration()
         updatePosition()
         combine_collisions()
+        
+        pygame.display.update()
 
 if __name__ == "__main__":
     main()
